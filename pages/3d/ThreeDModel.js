@@ -1,22 +1,22 @@
-// pages/3d/ThreeDModel.js
-
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three-stdlib';
 
 const ThreeDModel = ({ weight, height }) => {
+  const mountRef = useRef(null);
+
   useEffect(() => {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+    mountRef.current.appendChild(renderer.domElement);
 
-    // Agregar una luz ambiental
+    // Ajuste de la cámara
+    camera.position.set(0, height / 2, height * 2);
+
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
-
-    // Agregar una luz direccional
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(1, 1, 1).normalize();
     scene.add(directionalLight);
@@ -25,19 +25,32 @@ const ThreeDModel = ({ weight, height }) => {
     loader.load('/models/human.glb', (gltf) => {
       const model = gltf.scene;
 
-      // Escalar el modelo según el peso
-      const scale = weight / 20; // Ajustar la escala según el peso
-      model.scale.set(scale, scale, scale);
-      model.position.y = scale / 2; // Ajustar la posición en función de la escala
+      // Ajustes de altura y peso
+      const baseHeight = 170; // altura base en cm
+      const baseWeight = 70;  // peso base en kg
 
+      const scaleHeight = height / baseHeight;  // Escalar la altura
+      const scaleWeightX = 1 + (weight - baseWeight) / 100; // Escalar el ancho (panza) por el peso
+
+      // Escalar todo el cuerpo según la altura
+      model.scale.set(1, scaleHeight, 1);
+
+      // Aumentar solo el ancho y profundidad en el torso (zona de la panza) según el peso
+      model.traverse((child) => {
+        if (child.isMesh) {
+          if (child.name.includes("Torso") || child.name.includes("Abdomen")) {
+            child.scale.set(scaleWeightX, 1, scaleWeightX); // Escalar solo ancho y profundidad
+          }
+        }
+      });
+
+      // Ajustar la posición del modelo según la altura
+      model.position.y = scaleHeight / 2;
       scene.add(model);
-
-      camera.position.set(0, scale * 1.5, scale * 3); // Ajustar según la escala
-
 
       const animate = () => {
         requestAnimationFrame(animate);
-        model.rotation.y += 0.01; // Rotar el modelo
+        model.rotation.y += 0.01; // Rotación del modelo
         renderer.render(scene, camera);
       };
       animate();
@@ -45,13 +58,17 @@ const ThreeDModel = ({ weight, height }) => {
       console.error('Error cargando el modelo:', error);
     });
 
-    // Limpiar al desmontar el componente
     return () => {
-      document.body.removeChild(renderer.domElement);
+      mountRef.current.removeChild(renderer.domElement);
     };
   }, [weight, height]);
 
-  return null;
+  return (
+    <div
+      className="w-full h-full bg-blackish-blue flex items-center justify-center"
+      ref={mountRef}
+    />
+  );
 };
 
 export default ThreeDModel;
