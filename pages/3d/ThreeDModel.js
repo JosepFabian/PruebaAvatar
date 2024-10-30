@@ -1,6 +1,9 @@
+// pages/3d/ThreeDModel.js
+
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three-stdlib';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 const ThreeDModel = ({ weight, height }) => {
   const mountRef = useRef(null);
@@ -15,42 +18,49 @@ const ThreeDModel = ({ weight, height }) => {
     // Ajuste de la cámara
     camera.position.set(0, height / 2, height * 2);
 
+    // Luz de la escena
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(1, 1, 1).normalize();
     scene.add(directionalLight);
 
+    // Controles de órbita para rotación manual
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.rotateSpeed = 0.5;
+    controls.enableZoom = true;
+    controls.enablePan = false;
+
     const loader = new GLTFLoader();
     loader.load('/models/human.glb', (gltf) => {
       const model = gltf.scene;
 
-      // Ajustes de altura y peso
-      const baseHeight = 170; // altura base en cm
-      const baseWeight = 70;  // peso base en kg
+      // Ajustes de escala basados en peso y altura
+      const baseHeight = 170;  // Altura base en cm
+      const baseWeight = 70;   // Peso base en kg
 
-      const scaleHeight = height / baseHeight;  // Escalar la altura
-      const scaleWeightX = 1 + (weight - baseWeight) / 100; // Escalar el ancho (panza) por el peso
+      const scaleHeight = height / baseHeight;
+      const scaleWeightFactor = 1 + (weight - baseWeight) / 100;  // Factor de escala según peso
 
-      // Escalar todo el cuerpo según la altura
-      model.scale.set(1, scaleHeight, 1);
+      // Escalar modelo general en altura
+      model.scale.set(scaleHeight, scaleHeight, scaleHeight);
 
-      // Aumentar solo el ancho y profundidad en el torso (zona de la panza) según el peso
+      // Escalar torso y abdomen específicamente según peso
       model.traverse((child) => {
-        if (child.isMesh) {
-          if (child.name.includes("Torso") || child.name.includes("Abdomen")) {
-            child.scale.set(scaleWeightX, 1, scaleWeightX); // Escalar solo ancho y profundidad
-          }
+        if (child.isMesh && (child.name.includes("Torso") || child.name.includes("Abdomen"))) {
+          child.scale.set(scaleWeightFactor, 1, scaleWeightFactor);  // Solo ancho y profundidad
         }
       });
 
-      // Ajustar la posición del modelo según la altura
+      // Ajuste de posición según altura
       model.position.y = scaleHeight / 2;
       scene.add(model);
 
       const animate = () => {
         requestAnimationFrame(animate);
-        model.rotation.y += 0.01; // Rotación del modelo
+        controls.update();
         renderer.render(scene, camera);
       };
       animate();
@@ -59,6 +69,7 @@ const ThreeDModel = ({ weight, height }) => {
     });
 
     return () => {
+      controls.dispose();
       mountRef.current.removeChild(renderer.domElement);
     };
   }, [weight, height]);
@@ -72,3 +83,4 @@ const ThreeDModel = ({ weight, height }) => {
 };
 
 export default ThreeDModel;
+
