@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three-stdlib';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
-const ThreeDModel = ({ weight, height }) => {
+const ThreeDModel = ({ weight, height, modelType }) => {
   const mountRef = useRef(null);
 
   useEffect(() => {
@@ -15,17 +15,16 @@ const ThreeDModel = ({ weight, height }) => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     mountRef.current.appendChild(renderer.domElement);
 
-    // Ajuste de la cámara
-    camera.position.set(0, height / 2, height * 2);
+    // Ajuste de cámara: posicionarla más lejos para una vista completa
+    camera.position.set(0, height * 0.6, height * 3.5); // Posición ajustada en base a la altura
 
-    // Luz de la escena
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    // Luz ambiental y direccional
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1); // Luz ambiental más intensa
     scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(1, 1, 1).normalize();
     scene.add(directionalLight);
 
-    // Controles de órbita para rotación manual
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -33,31 +32,48 @@ const ThreeDModel = ({ weight, height }) => {
     controls.enableZoom = true;
     controls.enablePan = false;
 
+    const modelFile = modelType === 'male' ? '/models/human.glb' : '/models/female.glb';
+
     const loader = new GLTFLoader();
-    loader.load('/models/human.glb', (gltf) => {
+    loader.load(modelFile, (gltf) => {
       const model = gltf.scene;
 
-      // Ajustes de escala basados en peso y altura
-      const baseHeight = 170;  // Altura base en cm
-      const baseWeight = 70;   // Peso base en kg
+      // Verificar las dimensiones del modelo
+      const box = new THREE.Box3().setFromObject(model);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      console.log('Dimensiones del modelo: ', size);
 
+      // Ajuste de la escala y la posición
+      const baseHeight = 170; // Altura base en cm
       const scaleHeight = height / baseHeight;
-      const scaleWeightFactor = 1 + (weight - baseWeight) / 100;  // Factor de escala según peso
+      const scaleFactor = scaleHeight * 0.9; // Escala para ajustar al tamaño correcto
 
-      // Escalar modelo general en altura
-      model.scale.set(scaleHeight, scaleHeight, scaleHeight);
+      // Aplicar la escala y posición según el tipo de modelo
+      if (modelType === 'female') {
+        // Modelo femenino
+        model.scale.set(scaleFactor, scaleFactor, scaleFactor); // Ajuste de la escala
 
-      // Escalar torso y abdomen específicamente según peso
+        // Ajustar la posición para centrar el modelo en la escena
+        model.position.set(0, -scaleHeight * 2.2, 0); // Ajuste en Y para que el modelo no esté flotando
+      } else {
+        // Modelo masculino
+        model.scale.set(scaleHeight, scaleHeight, scaleHeight); // Escala para el modelo masculino
+        model.position.set(0, -scaleHeight * 2.5, 0); // Ajuste en Y para el modelo masculino
+      }
+
+      // Ajuste de la escala de torso y abdomen según el peso
+      const scaleWeightFactor = 1 + (weight - 70) / 100; // Factor de escala según peso
       model.traverse((child) => {
         if (child.isMesh && (child.name.includes("Torso") || child.name.includes("Abdomen"))) {
-          child.scale.set(scaleWeightFactor, 1, scaleWeightFactor);  // Solo ancho y profundidad
+          child.scale.set(scaleWeightFactor, 1, scaleWeightFactor); // Escala para torso y abdomen
         }
       });
 
-      // Ajuste de posición según altura
-      model.position.y = scaleHeight / 2;
+      // Añadir el modelo a la escena
       scene.add(model);
 
+      // Función de animación
       const animate = () => {
         requestAnimationFrame(animate);
         controls.update();
@@ -68,11 +84,12 @@ const ThreeDModel = ({ weight, height }) => {
       console.error('Error cargando el modelo:', error);
     });
 
+    // Limpiar al desmontar el componente
     return () => {
       controls.dispose();
       mountRef.current.removeChild(renderer.domElement);
     };
-  }, [weight, height]);
+  }, [weight, height, modelType]);
 
   return (
     <div
@@ -83,4 +100,3 @@ const ThreeDModel = ({ weight, height }) => {
 };
 
 export default ThreeDModel;
-
