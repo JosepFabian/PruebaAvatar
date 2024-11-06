@@ -10,13 +10,18 @@ const ThreeDModel = ({ weight, height }) => {
 
   useEffect(() => {
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.5, // Ajuste del valor near
+      10000 // Ajuste del valor far
+    );
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     mountRef.current.appendChild(renderer.domElement);
 
-    // Ajuste de la cámara
-    camera.position.set(0, height / 2, height * 2);
+    // Posición de la cámara (puedes ajustar más si es necesario)
+    camera.position.set(0, height * 10, height * 20);
 
     // Luz de la escena
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -31,31 +36,26 @@ const ThreeDModel = ({ weight, height }) => {
     controls.dampingFactor = 0.05;
     controls.rotateSpeed = 0.5;
     controls.enableZoom = true;
+    controls.minDistance = 200; // Mínima distancia para el zoom
+    controls.maxDistance = 10000; // Máxima distancia para el zoom
     controls.enablePan = false;
 
     const loader = new GLTFLoader();
-    loader.load('/models/human.glb', (gltf) => {
+    loader.load('/models/study_human_female_sculpt.glb', (gltf) => {
       const model = gltf.scene;
 
       // Ajustes de escala basados en peso y altura
-      const baseHeight = 170;  // Altura base en cm
-      const baseWeight = 70;   // Peso base en kg
+      const baseHeight = 170; // Altura base en cm
+      const baseWeight = 70;  // Peso base en kg
 
       const scaleHeight = height / baseHeight;
-      const scaleWeightFactor = 1 + (weight - baseWeight) / 100;  // Factor de escala según peso
+      const scaleWidth = 1 + (weight - baseWeight) / 100; // Factor de escala según peso
 
-      // Escalar modelo general en altura
-      model.scale.set(scaleHeight, scaleHeight, scaleHeight);
-
-      // Escalar torso y abdomen específicamente según peso
-      model.traverse((child) => {
-        if (child.isMesh && (child.name.includes("Torso") || child.name.includes("Abdomen"))) {
-          child.scale.set(scaleWeightFactor, 1, scaleWeightFactor);  // Solo ancho y profundidad
-        }
-      });
+      // Escalar modelo en altura y ancho según peso y altura
+      model.scale.set(scaleWidth, scaleHeight, scaleWidth); // Ajustar ancho y profundidad, mantener proporción en altura
 
       // Ajuste de posición según altura
-      model.position.y = scaleHeight / 2;
+      model.position.y = (scaleHeight / 1) * baseHeight;
       scene.add(model);
 
       const animate = () => {
@@ -83,4 +83,6 @@ const ThreeDModel = ({ weight, height }) => {
 };
 
 export default ThreeDModel;
+
+
 
