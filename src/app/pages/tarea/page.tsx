@@ -1,11 +1,41 @@
+"use client";
+
+import { useState } from "react";
+import { getInfoByFood } from "../../../services/cardiobotService";
 
 
 export const Actividad = () => {
-  // 1. Necesito que usen la API de FatSecret para obtener la información nutricional de los alimentos.
-  // 2. Necesito que me muestren la información nutricional de los alimentos en la interfaz.
-  // 3. Necesito que me muestren mensajes de ejemplo entre el usuario y CardioBOT.
-  // -- CONDICIÓN -> Si el usuario escribe un alimento, CardioBOT debe mostrar la información nutricional de ese alimento.
-  // -- SOLO USAR UN SERVICE PARA OBTENER LA INFORMACIÓN NUTRICIONAL DE LOS ALIMENTOS. NO MUEVAN NADA DE ESTILOS.
+  const [input, setInput] = useState(""); // Entrada del usuario
+  const [messages, setMessages] = useState([
+    { sender: "bot", text: "Hola, soy CardioBOT, ¿Sobre qué alimentos deseas saber más?" },
+  ]);
+
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+
+    // Añadir el mensaje del usuario
+    const newMessages = [...messages, { sender: "user", text: input }];
+    setMessages(newMessages);
+
+    // Obtener información del alimento
+    try {
+      const foodInfo = await getInfoByFood(input);
+
+      // Generar respuesta del bot
+      const botResponse = foodInfo.length
+        ? `El alimento "${input}" contiene:\n${foodInfo[0].food_description}.`
+        : `Lo siento, no encontré información sobre "${input}".`;
+
+      setMessages((prevMessages) => [...prevMessages, { sender: "bot", text: botResponse }]);
+    } catch (error) {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: "bot", text: "Hubo un error al obtener la información. Inténtalo nuevamente." },
+      ]);
+    } finally {
+      setInput("");
+    }
+  };
 
   return (
     <>
@@ -24,26 +54,37 @@ export const Actividad = () => {
       </div>
       <hr className="border border-gray-500 my-4" />
 
-      {/* Mensajes de ejemplo */}
+      {/* Mensajes */}
       <div className="flex flex-col space-y-4 mt-4">
-        <div className="flex justify-end">
-          <div className="bg-blue-500 text-white rounded-lg p-2 max-w-xs">
-            <p>Hola, soy CardioBOT, ¿Sobre que alimentos deseas saber más?</p>
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`flex ${
+              message.sender === "user" ? "justify-start" : "justify-end"
+            }`}
+          >
+            <div
+              className={`${
+                message.sender === "user" ? "bg-gray-200 text-black" : "bg-blue-500 text-white"
+              } rounded-lg p-2 max-w-xs whitespace-pre-line`}
+            >
+              <p>{message.text}</p>
+            </div>
           </div>
-        </div>
-        {/* Mensaje del usuario */}
-        <div className="flex justify-start">
-          <div className="bg-gray-200 text-black rounded-lg p-2 max-w-xs">
-            <p>Manzana</p>
-          </div>
-        </div>
+        ))}
       </div>
       <hr className="border border-gray-500 my-4" />
+
+      {/* Input */}
       <input
         type="text"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
         placeholder="Escribe tu mensaje..."
         className="w-full rounded-lg p-2 mt-2 focus:outline-none"
+        onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
       />
     </>
   );
 };
+
