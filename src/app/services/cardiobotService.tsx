@@ -8,19 +8,23 @@ interface Food {
 }
 
 interface FoodsResponse {
-  foods: {
-    food: Food[];
+  foods?: {
+    food?: Food[];
   };
 }
 
+// Constantes de configuración
 const API_BASE_URL = "https://platform.fatsecret.com/rest/server.api";
-const CLIENT_ID = "TU_CLIENT_ID"; // Reemplaza con tu Client ID
-const CLIENT_SECRET = "TU CLIENT_SECRET"; // Reemplaza con tu Client Secret
+const CLIENT_ID = "c8f06595d3bc4466959495289a6c54a4"; // Reemplaza con tu Client ID
+const CLIENT_SECRET = "858a4304a08e4768b7dd6918bc2d9d7c"; // Reemplaza con tu Client Secret
 
-// Función para obtener el token de acceso
+/**
+ * Obtiene el token de acceso usando las credenciales de cliente.
+ * @returns Token de acceso como string o `null` en caso de error.
+ */
 const getAccessToken = async (): Promise<string | null> => {
   try {
-    const response = await axios.post(
+    const response = await axios.post<{ access_token: string }>(
       "https://oauth.fatsecret.com/connect/token",
       new URLSearchParams({
         grant_type: "client_credentials",
@@ -36,14 +40,18 @@ const getAccessToken = async (): Promise<string | null> => {
         },
       }
     );
-    return response.data.access_token;
+    return response.data.access_token; // Devuelve el token
   } catch (error) {
     console.error("Error al obtener el token de acceso:", error);
-    return null;
+    return null; // Devuelve null si falla
   }
 };
 
-// Función para obtener información nutricional de un alimento
+/**
+ * Busca información nutricional de un alimento usando la API de FatSecret.
+ * @param food Nombre o término de búsqueda del alimento.
+ * @returns Lista de alimentos encontrados o un array vacío.
+ */
 export const getInfoByFood = async (food: string): Promise<Food[]> => {
   const token = await getAccessToken();
   if (!token) {
@@ -62,7 +70,7 @@ export const getInfoByFood = async (food: string): Promise<Food[]> => {
       },
     });
 
-    // Retorna los alimentos encontrados o un array vacío si no hay datos
+    // Retorna los alimentos encontrados o un array vacío
     return response.data.foods?.food || [];
   } catch (error) {
     console.error("Error al obtener información nutricional:", error);
